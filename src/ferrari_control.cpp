@@ -25,21 +25,39 @@ class KeyboardController
         int steer, throttle;
         bool autoMode;
 
+        ros::Publisher pubAutoMode;
+        ros::Publisher pubAutoSteer;
+        ros::Publisher pubAutoThrottle;
+
     private:
         ros::Subscriber subGearNum;
         ros::Subscriber subSteer;
         ros::Subscriber subThrottle;
-
-        ros::Publisher pubAutoMode;
-        ros::Publisher pubAutoSteer;
-        ros::Publisher pubAutoThrottle;
 };
+
+void KeyboardController::callbackGearNum(const std_msgs::Int16& msg)
+{
+
+    return;
+}
+
+void KeyboardController::callbackSteer(const std_msgs::Int16& msg)
+{
+
+    return;
+}
+
+void KeyboardController::callbackThrottle(const std_msgs::Int16& msg)
+{
+
+    return;
+}
 
 KeyboardController::KeyboardController(ros::NodeHandle& nh) : nh_(nh)
 {
     steer = 1500;
     throttle = 1500;
-    autoMode = false;
+    autoMode = true;
 
     subGearNum = nh_.subscribe("/car/gear_num",1, &KeyboardController::callbackGearNum, this);
     subSteer = nh_.subscribe("/rc_cmd/steer",1, &KeyboardController::callbackSteer, this);
@@ -58,7 +76,7 @@ KeyboardController::~KeyboardController()
     pubAutoMode.publish(cmdMode);
     pubAutoSteer.publish(cmdSteer);
     pubAutoThrottle.publish(cmdThrottle);
-    ROS_INFO("AstarPlanner destructor.");
+    ROS_INFO("Ferrari controller destructor.");
 }
 
 
@@ -68,34 +86,37 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
     KeyboardController controller(nh);
 
-    cmdMode.data = true;
-    pubAutoMode.publish(cmdMode);
+    cmdMode.data = controller.autoMode;
     init_termios(0);
 
     while(true) {
         char c = getch();
+        controller.pubAutoMode.publish(cmdMode);
         if (c == 'w') {
-            controller.steer = 1450;
-            
+            controller.throttle = 1400;
         }
         else if (c == 's') {
-            controller.steer = 1550;
+            controller.throttle = 1600;
         }
         if (c == 'd') {
-            controller.throttle = 1550;
+            controller.steer = 1700;
         }
         else if (c == 'a') {
-            controller.throttle = 1450;
+            controller.steer = 1300;
+        }
+        else if (c == 'x') {
+            controller.steer = 1500;
         }
         if (c == 'q') {
             break;
         }
         cmdSteer.data = controller.steer;
         cmdThrottle.data = controller.throttle;
-        pubAutoSteer.publish(cmdSteer);
-        pubAutoThrottle.publish(cmdThrottle);
-        ros::spin_once();
+        controller.pubAutoSteer.publish(cmdSteer);
+        controller.pubAutoThrottle.publish(cmdThrottle);
+        ros::spinOnce();
     }
+
     reset_termios();
     return 0;
 }

@@ -107,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES turtlesim_ferrari
+#  LIBRARIES turtlesim_ferrari
   CATKIN_DEPENDS roscpp rospy rosserial_python sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
@@ -127,7 +127,7 @@ add_executable(keyboard_controller src/ferrari_control.cpp src/key_input_fu.cpp)
 add_dependencies(keyboard_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(keyboard_controller
   ${catkin_LIBRARIES}
-  turtlesim_ferrari
+#  turtlesim_ferrari
 )
 
 ## Declare a C++ library
