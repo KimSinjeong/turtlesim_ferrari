@@ -27,8 +27,10 @@
 #include <thread>
 
 #include <fstream>
+#include <termios.h>
+#include <unistd.h>
 
-bool write = false;
+bool iswrite = false;
 
 int getch()
 {
@@ -67,24 +69,23 @@ TrackExtractor::~TrackExtractor()
 
 void TrackExtractor::PathRead(const nav_msgs::Path& msg)
 {
-    if (!write)
+    if (!iswrite)
         return;
 
     std::ofstream writeFile("path.csv");
-    geoemtry_msgs::Pose pose;
+    geometry_msgs::Pose pose;
     double x, y;
 
     if (writeFile.is_open()) {
         for (int i = 0; i < msg.poses.size(); i++) {
-            pose = msg.poses.at(i);
-            x = pose.position.x;
-            y = pose.position.y;
+            x = msg.poses.at(i).pose.position.x;
+            y = msg.poses.at(i).pose.position.y;
             
             writeFile << x << "," << y << std::endl;
         }
-        openFile.close();
+        writeFile.close();
     }
-    write = false;
+    iswrite = false;
 }
 
 int main(int argc, char** argv)
@@ -98,7 +99,7 @@ int main(int argc, char** argv)
     while (ros::ok())
     {
         int c = getch();   // call your non-blocking input function
-        write = true;
+        iswrite = true;
     }
 
     return 0;

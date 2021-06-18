@@ -134,7 +134,6 @@ add_executable(track_extractor src/track_extractor.cpp)
 add_dependencies(track_extractor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(track_extractor
   ${catkin_LIBRARIES}
-  turtlesim_ferrari
 )
 
 ## Declare a C++ library
