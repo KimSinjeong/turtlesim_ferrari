@@ -93,18 +93,21 @@ int main(int argc, char **argv){
         char c = getch();
         controller.pubAutoMode.publish(cmdMode);
         if (c == 'w') {
-            controller.throttle = 1400;
+            controller.throttle = 1450;
         }
-        else if (c == 's') {
+        else if (c == 'x') {
             controller.throttle = 1600;
         }
         if (c == 'd') {
             controller.steer = 1700;
         }
         else if (c == 'a') {
-            controller.steer = 1300;
+            controller.steer = 1250;
         }
-        else if (c == 'x') {
+        else if (c == 's') {
+            controller.throttle = 1500;
+        }
+        else if (c == 'e') {
             controller.steer = 1500;
         }
         if (c == 'q') {
