@@ -10,7 +10,6 @@
 #include <ros/console.h>
 #include <ros/package.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <nav_msgs/Path.h>
 // headers in STL
 #include <memory>
 #include <cmath>
@@ -27,65 +26,42 @@
 #include <thread>
 
 #include <fstream>
-#include <termios.h>
-#include <unistd.h>
-
-bool iswrite = false;
-
-int getch()
-{
-  static struct termios oldt, newt;
-  tcgetattr( STDIN_FILENO, &oldt);           // save old settings
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON);                 // disable buffering      
-  tcsetattr( STDIN_FILENO, TCSANOW, &newt);  // apply new settings
-
-  int c = getchar();  // read character (non-blocking)
-
-  tcsetattr( STDIN_FILENO, TCSANOW, &oldt);  // restore old settings
-  return c;
-}
 
 class TrackExtractor
 {
     public:
         TrackExtractor(ros::NodeHandle& nh);        
         ~TrackExtractor();
-        void PathRead(const nav_msgs::Path& msg);
+        void PathRead(const geometry_msgs::PoseStamped&);
         
         ros::NodeHandle nh_;
         ros::Subscriber subPath;
+        std::ofstream writeFile;
 };
 
 TrackExtractor::TrackExtractor(ros::NodeHandle& nh) : nh_(nh)
 {
-    subPath = nh_.subscribe("/trajectory",1, &TrackExtractor::PathRead, this);
+    subPath = nh_.subscribe("slam_out_pose",100, &TrackExtractor::PathRead, this);
+    writeFile = std::ofstream("path.csv");
 };
 
 TrackExtractor::~TrackExtractor() 
 {    
     ROS_INFO("TrackExtractor destructor.");
+    writeFile.close();
 }
 
-void TrackExtractor::PathRead(const nav_msgs::Path& msg)
+void TrackExtractor::PathRead(const geometry_msgs::PoseStamped& msg)
 {
-    if (!iswrite)
-        return;
-
-    std::ofstream writeFile("path.csv");
-    geometry_msgs::Pose pose;
-    double x, y;
-
     if (writeFile.is_open()) {
-        for (int i = 0; i < msg.poses.size(); i++) {
-            x = msg.poses.at(i).pose.position.x;
-            y = msg.poses.at(i).pose.position.y;
-            
-            writeFile << x << "," << y << std::endl;
-        }
-        writeFile.close();
+	    std::cout << "Writting...." << std::endl;
+        double x, y;
+
+        x = msg.pose.position.x;
+        y = msg.pose.position.y;
+        
+        writeFile << x << "," << y << std::endl;   
     }
-    iswrite = false;
 }
 
 int main(int argc, char** argv)
@@ -95,13 +71,9 @@ int main(int argc, char** argv)
 
     ros::NodeHandle nh;
     TrackExtractor localizer(nh);
+    std::cout << "Start Logging Path" << std::endl;
 
-    while (ros::ok())
-    {
-        int c = getch();   // call your non-blocking input function
-        iswrite = true;
-    }
-
+    ros::spin();
     return 0;
 }
 

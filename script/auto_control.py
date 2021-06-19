@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 import math
+import sys
 
 import roslib
 import rospy
@@ -91,8 +92,9 @@ class AutoController():
         self.ego_x   = 0
         self.ego_y   = 0
         self.ego_yaw = 0
-        self.ego_vx  = 0
-
+        self.time  = rospy.Time.now()
+        #self.ego_vx  = 0
+        self.updated = True
         self.wpt_look_ahead = 0   # [index]
 
         # Pub/Sub
@@ -101,6 +103,9 @@ class AutoController():
         self.pub_mode = rospy.Publisher('/auto_mode', Bool, queue_size=5)
         self.sub_odom = rospy.Subscriber('/odom', Odometry, self.callback_odom)
 
+    def __del__(self):
+        publish_command(0, 0)
+
     def callback_odom(self, msg):
         """
         Subscribe Odometry message
@@ -108,7 +113,9 @@ class AutoController():
         """
         self.ego_x = msg.pose.pose.position.x
         self.ego_y = msg.pose.pose.position.y
-        self.ego_vx = msg.twist.twist.linear.x # time difference
+        #self.ego_vx = msg.twist.twist.linear.x # time difference
+        self.time = msg.header.stamp
+        self.updated = True
         # get euler from quaternion
         q = msg.pose.pose.orientation
         q_list = [q.x, q.y, q.z, q.w]
@@ -138,7 +145,9 @@ class AutoController():
         """
         kp_v = 0.5
                 
-        return kp_v * error_v
+        speed = np.clip(kp_v*error_v, -self.target_speed, self.target_speed)
+                
+        return speed
 
     def publish_command(self, steer, accel):
         """
@@ -147,9 +156,9 @@ class AutoController():
         steer_msg = Int16()
         accel_msg = Int16()
 
-        steer_msg.data = int((steer / self.MAX_STEER)*400) +1500
+        steer_msg.data = int((-steer / self.MAX_STEER)*400) +1500
         accel_msg.data = int(accel * 100 + 1500)
-        rospy.loginfo("Commands: (steer sig=%d, accel sig=%d)" %(steer_msg.data, accel_msg.data))
+        # rospy.loginfo("Commands: (steer sig=%d, accel sig=%d)" %(steer_msg.data, accel_msg.data))
         self.pub_steer.publish(steer_msg)
         self.pub_throttle.publish(accel_msg)
     
@@ -161,7 +170,7 @@ class AutoController():
         mode_msg.data = mode
         self.pub_mode.publish(mode_msg)
 
-def main():
+def main(args):
     # Load Waypoint
     rospack = rospkg.RosPack()
     WPT_CSV_PATH = rospack.get_path('turtlesim_ferrari') + "/wpt_data/path.csv"
@@ -172,7 +181,7 @@ def main():
     print("loaded wpt :", wpts_x.shape, wpts_y.shape)
 
     settings = {}
-    with open('settings.yaml') as f:
+    with open(args['setting']) as f:
         settings = yaml.load(f, Loader=yaml.FullLoader)
     
     print("loaded setting :", settings)
@@ -180,33 +189,72 @@ def main():
     # Define controller
     wpt_control = AutoController(settings)
 
+    while not rospy.get_param('/initialized', True):
+        pass
+
+    wpt_control.publish_mode(True)
+
+    # Initialization
+    prev_ego_x = wpt_control.ego_x
+    prev_ego_y = wpt_control.ego_y
+    prev_ego_yaw = wpt_control.ego_yaw
+    prev_ego_vx = 0
+    prev_time = wpt_control.time
+
+    cnt = 0
     while not rospy.is_shutdown():
-        # Get current state
-        ego_x = wpt_control.ego_x
-        ego_y = wpt_control.ego_y
-        ego_yaw = wpt_control.ego_yaw
-        ego_vx = wpt_control.ego_vx
+        if (wpt_control.updated):
+            wpt_control.updated = False
+            # Get current state
+            time = wpt_control.time
+            ego_x = wpt_control.ego_x
+            ego_y = wpt_control.ego_y
+            ego_yaw = wpt_control.ego_yaw
+            rospy.loginfo("loop, time: %f, x: %f y: %f" %(time.to_sec(), ego_x, ego_y))
+            if abs((time - prev_time).to_sec()) < 1e-9:
+                #rospy.loginfo("dt: %f\n" % ((time-prev_time).to_sec()))
+                ego_vx = 0
+            else:
+                ego_vx = (math.sqrt((ego_x - prev_ego_x)**2 + (ego_y - prev_ego_y)**2)) / (time - prev_time).to_sec()
 
-        # Find the nearest waypoint
-        _, near_ind = find_nearest_point(ego_x, ego_y, wpts_x, wpts_y)
-        wpt_ind = near_ind
+            # Find the nearest waypoint
+            _, near_ind = find_nearest_point(ego_x, ego_y, wpts_x, wpts_y)
+            wpt_ind = near_ind
 
-        # Lateral error calculation (cross-track error, yaw error)
-        error_y, error_yaw = calc_error(ego_x, ego_y, ego_yaw, wpts_x, wpts_y, wpt_ind, wpt_look_ahead=wpt_control.wpt_look_ahead)
+            # Lateral error calculation (cross-track error, yaw error)
+            error_y, error_yaw = calc_error(ego_x, ego_y, ego_yaw, wpts_x, wpts_y, wpt_ind, wpt_look_ahead=wpt_control.wpt_look_ahead)
 
-        # Longitudinal error calculation (speed error)
-        error_v = wpt_control.target_speed - ego_vx
+            # Longitudinal error calculation (speed error)
+            error_v = wpt_control.target_speed - ego_vx
 
-        # Control
-        steer_cmd = wpt_control.steer_control(error_y, error_yaw, ego_vx)
-        throttle_cmd = wpt_control.speed_control(error_v)
+            # Control
+            steer_cmd = wpt_control.steer_control(error_y, error_yaw, ego_vx)
+            throttle_cmd = wpt_control.speed_control(error_v)
 
-        # Publish command
-        wpt_control.publish_command(steer_cmd, throttle_cmd)
+            # Publish command
+            wpt_control.publish_command(steer_cmd, throttle_cmd)
 
-        rospy.loginfo("Commands: (steer=%.3f, accel=%.3f). Errors: (CrossTrackError=%.3f, YawError=%.3f, SpeedError=%.3f)." %(steer_cmd, throttle_cmd, error_y, error_yaw, error_v))
-        wpt_control.rate.sleep()
+            #if cnt % 20 == 0:
+            rospy.loginfo("Velocity: %.3f\nCommands: (steer=%.3f, accel=%.3f). Errors: (CrossTrackError=%.3f, YawError=%.3f, SpeedError=%.3f)." %(ego_vx, steer_cmd, throttle_cmd, error_y, error_yaw, error_v))
+            
+            cnt = (cnt + 1)%20
+
+            # Save previous state
+            prev_ego_x = ego_x
+            prev_ego_y = ego_y
+            prev_ego_yaw = ego_yaw
+            prev_ego_vx = ego_vx
+            prev_time = time
+
+            wpt_control.rate.sleep()
 
 
 if __name__ == '__main__':
-    main()
+    args = {}
+    if len(sys.argv) < 2:
+        args['setting'] = "settings.yaml"
+        #args['integrated'] = False
+    else:
+        args['setting'] = sys.argv[1]
+        #args['integrated'] = True
+    main(args)
