@@ -16,5 +16,5 @@
     <node name="wpt_loader" pkg="turtlesim_ferrari" type="wpt_loader.py"/>
 
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlesim_ferrari)/rviz/config.rviz"/>
-    <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>
+    <!--<node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>-->
 </launch>

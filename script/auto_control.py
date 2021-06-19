@@ -95,7 +95,8 @@ class AutoController():
         self.time  = rospy.Time.now()
         #self.ego_vx  = 0
         self.updated = True
-        self.wpt_look_ahead = 0   # [index]
+        #self.wpt_look_ahead = 90   # [index], Current optimal
+        self.wpt_look_ahead = 8
 
         # Pub/Sub
         self.pub_throttle = rospy.Publisher('/auto_cmd/throttle', Int16, queue_size=5)
@@ -128,8 +129,8 @@ class AutoController():
         TODO-1 : Tuning your steering controller (Currently, P controller is implemented.).
         TODO-2 : Implement PI controller for steering angle control.
         """
-        k = 4
-        A = 1
+        k = 1
+        A = .35
         
         steer = A*(error_yaw + math.atan2(k*error_y, ego_vx+1e-10))
         

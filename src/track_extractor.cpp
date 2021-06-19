@@ -42,7 +42,7 @@ class TrackExtractor
 TrackExtractor::TrackExtractor(ros::NodeHandle& nh) : nh_(nh)
 {
     subPath = nh_.subscribe("slam_out_pose",100, &TrackExtractor::PathRead, this);
-    writeFile = std::ofstream("path.csv");
+    writeFile = std::ofstream("/home/group6/catkin_ws/src/turtlesim_ferrari/path.csv");
 };
 
 TrackExtractor::~TrackExtractor() 

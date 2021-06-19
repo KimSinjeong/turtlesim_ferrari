@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="scan_ip" default="192.168.0.10"/>
+
+    <include file="$(find hector_slam_launch)/launch/tutorial.launch"/>
+    <!--<node name="hector_mapping" pkg="hector_mapping" type="hector_mapping"/>-->
+
+    <node name="urg_node" pkg="urg_node" type="urg_node" args="_ip_address:=$(arg scan_ip)"/>
+    <node name="manual_controller" pkg="turtlesim_ferrari" type="manual_control.py" output="screen"/>
+    <node name="track_extractor" pkg="turtlesim_ferrari" type="track_extractor" output="screen"/>
+    
+    <node name="serial_node" pkg="rosserial_arduino" type="serial_node.py" args="_port:=/dev/ttyACM1 _baud:=57600"/>
+
+    <!--<node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlesim_ferrari)/rviz/config.rviz"/>-->
+</launch>

@@ -1,2 +1,3 @@
-target_speed: 1.5
+target_speed: 3.5
+#target_speed: 2.5
 max_steer: 17.5
