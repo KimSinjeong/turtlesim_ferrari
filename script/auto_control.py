@@ -128,8 +128,8 @@ class AutoController():
         TODO-1 : Tuning your steering controller (Currently, P controller is implemented.).
         TODO-2 : Implement PI controller for steering angle control.
         """
-        k = 10
-        A = 0.1
+        k = 4
+        A = 1
         
         steer = A*(error_yaw + math.atan2(k*error_y, ego_vx+1e-10))
         
@@ -156,8 +156,8 @@ class AutoController():
         steer_msg = Int16()
         accel_msg = Int16()
 
-        steer_msg.data = int((-steer / self.MAX_STEER)*400) +1500
-        accel_msg.data = int(accel * 100 + 1500)
+        steer_msg.data = int((- steer / self.MAX_STEER)*400) +1500 - 75
+        accel_msg.data = int(-accel * 100 + 1500)
         # rospy.loginfo("Commands: (steer sig=%d, accel sig=%d)" %(steer_msg.data, accel_msg.data))
         self.pub_steer.publish(steer_msg)
         self.pub_throttle.publish(accel_msg)

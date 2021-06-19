@@ -8,7 +8,7 @@
     <arg name="scan_ip" default="192.168.0.10"/>
 
     <node name="scan_matcher" pkg="turtlesim_ferrari" type="scan_matcher"/>
-    <node name="urg_node" pkg="urg_node" args="_ip_address:=$(arg scan_ip)"/>
+    <node name="urg_node" pkg="urg_node" type="urg_node" args="_ip_address:=$(arg scan_ip)"/>
     <node name="auto_controller" pkg="turtlesim_ferrari" type="auto_control.py" args="$(arg controller_config)" output="screen"/>
     
     <node name="serial_node" pkg="rosserial_arduino" type="serial_node.py" args="_port:=/dev/ttyACM1 _baud:=57600"/>

@@ -38,6 +38,7 @@
 #include <bits/stdc++.h>
 #include <mutex>
 #include <thread>
+#include <stdlib.h>
 
 // PCL Libraries
 #include <pcl_conversions/pcl_conversions.h>
@@ -289,6 +290,7 @@ int main(int argc, char** argv)
 {    
     // node name initialization
     ros::init(argc, argv, "scan_matcher");
+    sleep(10);
 
     ros::NodeHandle nh;
     ScanLocalizer localizer(nh);
