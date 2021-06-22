@@ -21,7 +21,6 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(PCL REQUIRED)
 
 catkin_package(
-  INCLUDE_DIRS include
 #  LIBRARIES turtlesim_ferrari
   CATKIN_DEPENDS roscpp rospy rosserial_python sensor_msgs std_msgs
 #  DEPENDS system_lib
@@ -34,7 +33,6 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
 )
