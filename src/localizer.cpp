@@ -228,7 +228,7 @@ void ScanLocalizer::NDTMatching(pcl::PointCloud<pcl::PointXYZI>::Ptr &InputData,
 
     boost::shared_ptr<pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>> ndt(new pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
     ndt->setInputSource(InputData);
-    ndt->setInputTarget(TargetData);    
+    ndt->setInputTarget(TargetData);
     ndt->setTransformationEpsilon(0.01); 
     ndt->setMaximumIterations(32); 
     ndt->setResolution(1.0);
@@ -290,7 +290,7 @@ int main(int argc, char** argv)
 {    
     // node name initialization
     ros::init(argc, argv, "scan_matcher");
-    sleep(10);
+    sleep(15);
 
     ros::NodeHandle nh;
     ScanLocalizer localizer(nh);

@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="scan_ip" default="192.168.0.10"/>
+    <node name="urg_node" pkg="urg_node" type="urg_node" args="_ip_address:=$(arg scan_ip)"/>
+    <node name="serial_node" pkg="rosserial_arduino" type="serial_node.py" args="_port:=/dev/ttyACM1 _baud:=57600"/>
+</launch>

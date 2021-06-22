@@ -95,8 +95,7 @@ class AutoController():
         self.time  = rospy.Time.now()
         #self.ego_vx  = 0
         self.updated = True
-        #self.wpt_look_ahead = 90   # [index], Current optimal
-        self.wpt_look_ahead = 8
+        self.wpt_look_ahead = 16
 
         # Pub/Sub
         self.pub_throttle = rospy.Publisher('/auto_cmd/throttle', Int16, queue_size=5)
@@ -104,8 +103,8 @@ class AutoController():
         self.pub_mode = rospy.Publisher('/auto_mode', Bool, queue_size=5)
         self.sub_odom = rospy.Subscriber('/odom', Odometry, self.callback_odom)
 
-    def __del__(self):
-        publish_command(0, 0)
+    def stop(self):
+        self.publish_command(0, 0)
 
     def callback_odom(self, msg):
         """
@@ -129,10 +128,11 @@ class AutoController():
         TODO-1 : Tuning your steering controller (Currently, P controller is implemented.).
         TODO-2 : Implement PI controller for steering angle control.
         """
-        k = 1
-        A = .35
-        
-        steer = A*(error_yaw + math.atan2(k*error_y, ego_vx+1e-10))
+        k = 1.1
+        A = .216
+        B = .25
+
+        steer = A*(error_yaw) + B*math.atan2(k*error_y, ego_vx+1e-10)
         
         # Control limit
         steer = np.clip(steer, -self.MAX_STEER, self.MAX_STEER)
@@ -144,7 +144,7 @@ class AutoController():
         Speed control
         TODO-3: Tuning your speed controller (Currently, P controller is implemented.).
         """
-        kp_v = 0.5
+        kp_v = 0.75
                 
         speed = np.clip(kp_v*error_v, -self.target_speed, self.target_speed)
                 
@@ -157,8 +157,8 @@ class AutoController():
         steer_msg = Int16()
         accel_msg = Int16()
 
-        steer_msg.data = int((- steer / self.MAX_STEER)*400) +1500 - 75
-        accel_msg.data = int(-accel * 100 + 1500)
+        steer_msg.data = int((- steer / self.MAX_STEER)*400) + 1500 - 75
+        accel_msg.data = int(- accel * 100 + 1500)
         # rospy.loginfo("Commands: (steer sig=%d, accel sig=%d)" %(steer_msg.data, accel_msg.data))
         self.pub_steer.publish(steer_msg)
         self.pub_throttle.publish(accel_msg)
@@ -203,15 +203,16 @@ def main(args):
     prev_time = wpt_control.time
 
     cnt = 0
+    rospy.on_shutdown(wpt_control.stop)
     while not rospy.is_shutdown():
         if (wpt_control.updated):
             wpt_control.updated = False
             # Get current state
             time = wpt_control.time
-            ego_x = wpt_control.ego_x
-            ego_y = wpt_control.ego_y
             ego_yaw = wpt_control.ego_yaw
-            rospy.loginfo("loop, time: %f, x: %f y: %f" %(time.to_sec(), ego_x, ego_y))
+            ego_x = wpt_control.ego_x + 0.07*np.cos(ego_yaw)
+            ego_y = wpt_control.ego_y + 0.07*np.sin(ego_yaw)
+            #rospy.loginfo("loop, time: %f, x: %f y: %f" %(time.to_sec(), ego_x, ego_y))
             if abs((time - prev_time).to_sec()) < 1e-9:
                 #rospy.loginfo("dt: %f\n" % ((time-prev_time).to_sec()))
                 ego_vx = 0
@@ -223,20 +224,24 @@ def main(args):
             wpt_ind = near_ind
 
             # Lateral error calculation (cross-track error, yaw error)
-            error_y, error_yaw = calc_error(ego_x, ego_y, ego_yaw, wpts_x, wpts_y, wpt_ind, wpt_look_ahead=wpt_control.wpt_look_ahead)
+            # validate look ahead distance
+            wptld = wpt_control.wpt_look_ahead
+            
+            error_y, error_yaw = calc_error(ego_x, ego_y, ego_yaw, wpts_x, wpts_y, wpt_ind, wptld)
 
             # Longitudinal error calculation (speed error)
             error_v = wpt_control.target_speed - ego_vx
 
-            # Control
             steer_cmd = wpt_control.steer_control(error_y, error_yaw, ego_vx)
-            throttle_cmd = wpt_control.speed_control(error_v)
+            throttle_cmd = wpt_control.speed_control(error_v)          
+            
+            rospy.loginfo("speed: %f\n" % ego_vx)
 
             # Publish command
             wpt_control.publish_command(steer_cmd, throttle_cmd)
 
             #if cnt % 20 == 0:
-            rospy.loginfo("Velocity: %.3f\nCommands: (steer=%.3f, accel=%.3f). Errors: (CrossTrackError=%.3f, YawError=%.3f, SpeedError=%.3f)." %(ego_vx, steer_cmd, throttle_cmd, error_y, error_yaw, error_v))
+            #rospy.loginfo("Velocity: %.3f\nCommands: (steer=%.3f, accel=%.3f). Errors: (CrossTrackError=%.3f, YawError=%.3f, SpeedError=%.3f)." %(ego_vx, steer_cmd, throttle_cmd, error_y, error_yaw, error_v))
             
             cnt = (cnt + 1)%20
 
@@ -254,8 +259,6 @@ if __name__ == '__main__':
     args = {}
     if len(sys.argv) < 2:
         args['setting'] = "settings.yaml"
-        #args['integrated'] = False
     else:
         args['setting'] = sys.argv[1]
-        #args['integrated'] = True
     main(args)
